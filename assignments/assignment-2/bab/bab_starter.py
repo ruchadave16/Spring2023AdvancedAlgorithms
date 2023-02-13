@@ -86,7 +86,7 @@ class BBTreeNode:
         Returns:
             n1 (BBTreeNode object): child where xi <= floor(xi).
         """
-        n1 = self.__deepcopy__()
+        n1 = self.__deepcopy__(branch_var)
         # add in the new binary constraint
         n1.prob.add_constraint(branch_var <= math.floor(branch_var.value))
         return n1
@@ -101,7 +101,7 @@ class BBTreeNode:
         Returns:
             n2 (BBTreeNode object): child where xi >= ceiling(xi).
         """
-        n2 = self.__deepcopy__()
+        n2 = self.__deepcopy__(branch_var)
         # add in the new binary constraint
         n2.prob.add_constraint(branch_var >= math.ceil(branch_var.value))
         return n2
