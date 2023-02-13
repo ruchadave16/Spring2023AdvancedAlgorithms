@@ -9,7 +9,8 @@ import math
 
 counter = itertools.count()
 
-class BBTreeNode():
+
+class BBTreeNode:
     """
     Creates and handles a BBTreeNode object that can branch and bound
     to determine the optimal result and corresponding best variable
@@ -26,7 +27,7 @@ class BBTreeNode():
             using constraints, vars, and objective.
     """
 
-    def __init__(self, vars = [], constraints = [], objective='', prob=None):
+    def __init__(self, vars=[], constraints=[], objective="", prob=None):
         """
         Initializes BBTreeNode.
         """
@@ -55,9 +56,9 @@ class BBTreeNode():
             self.prob (picos Problem object): problem created from
                 constraints, objective, and vars.
         """
-        prob=pic.Problem()
+        prob = pic.Problem()
         prob.add_list_of_constraints(self.constraints)
-        prob.set_objective('max', self.objective)
+        prob.set_objective("max", self.objective)
         self.prob = prob
         return self.prob
 
@@ -85,7 +86,7 @@ class BBTreeNode():
         Returns:
             n1 (BBTreeNode object): child where xi <= floor(xi).
         """
-        n1 = deepcopy(self)
+        n1 = self.__deepcopy__()
         # add in the new binary constraint
         n1.prob.add_constraint(branch_var <= math.floor(branch_var.value))
         return n1
@@ -100,7 +101,7 @@ class BBTreeNode():
         Returns:
             n2 (BBTreeNode object): child where xi >= ceiling(xi).
         """
-        n2 = deepcopy(self)
+        n2 = self.__deepcopy__()
         # add in the new binary constraint
         n2.prob.add_constraint(branch_var >= math.ceil(branch_var.value))
         return n2
@@ -114,16 +115,58 @@ class BBTreeNode():
             bestnode_vars (list of floats): list of variables that
                 create bestres.
         """
-        # these lines build up the initial problem and add it to a heap
+        # Build up the initial problem and add it to a heap
         root = self
-        res = root.buildProblem().solve(solver='cvxopt')
+        res = root.buildProblem().solve(solver="cvxopt")
         heap = [(res, next(counter), root)]
-        # set bestres to an arbitrary small initial best objective value
+
+        # Set bestres to an arbitrary small initial best objective value
         bestres = -1e20
-        # initialize bestnode_vars to the root vars
+
+        # Initialize bestnode_vars to the root vars
         bestnode_vars = root.vars
 
-        #TODO:
-        # Implement your solution here!
+        while len(heap) > 0:
+            _, _, thisres = hq.heappop(heap)
+
+            for var in thisres.vars:
+                print(var.value)
+
+            # If integer answer, check for best result
+            if thisres.is_integral():
+                bestres = thisres.objective.value
+                bestnode_vars = thisres.vars
+
+            # If current answer is better than best result
+            elif thisres.objective.value > bestres:
+
+                # Pick variable to branch on
+                chosen_var = thisres.vars[0]
+                for var in thisres.vars:
+                    if abs(round(var.value) - float(var.value)) > 1e-4:
+                        chosen_var = var
+                        print(chosen_var)
+                        break
+
+                # Create new branches
+                n1 = thisres.branch_floor(chosen_var)
+                n2 = thisres.branch_ceil(chosen_var)
+
+                # Add to heap if feasible
+                try:
+                    if n1.prob.solve(solver="cvxopt") != "infeasible":
+                        hq.heappush(heap, (bestres, next(counter), n1))
+                except:
+                    pass
+
+                try:
+                    if n2.prob.solve(solver="cvxopt") != "infeasible":
+                        hq.heappush(heap, (bestres, next(counter), n2))
+                except:
+                    pass
+
+            # Skip bad solutions
+            else:
+                pass
 
         return bestres, bestnode_vars
